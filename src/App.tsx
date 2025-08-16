@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import PayrollTable, { Row, WEEKS_PER_MONTH, sumLabor } from './components.PayrollTable';
-import { formatCurrency } from './utils.currency';
+import PayrollTable, { Row, WEEKS_PER_MONTH, sumLabor } from './components/PayrollTable';
+mport { formatCurrency } from './utils/currency';
 import { supabase } from './supabaseClient';
 import LoginCard from './LoginCard';
 
