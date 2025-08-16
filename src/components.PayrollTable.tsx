@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { formatCurrency } from './utils.currency';
+import { formatCurrency } from '../utils/currency';
 
 export const WEEKS_PER_MONTH = 4.333;
 
@@ -32,7 +31,6 @@ export default function PayrollTable({ rows, setRows }: Props) {
   };
 
   const rowMonthly = (r: Row) => r.hoursPerNight * r.payPerHour * r.nightsPerWeek * WEEKS_PER_MONTH;
-
   const labor = rows.reduce((sum, r) => sum + rowMonthly(r), 0);
 
   return (
@@ -61,18 +59,18 @@ export default function PayrollTable({ rows, setRows }: Props) {
                 <td className="td">{i + 1}</td>
                 <td className="td text-right">
                   <input className="number-input" type="number" min={0} step="0.1"
-                    value={r.hoursPerNight}
-                    onChange={e => update(r.id, 'hoursPerNight', number(e.target.value))}/>
+                         value={r.hoursPerNight}
+                         onChange={e => update(r.id, 'hoursPerNight', number(e.target.value))}/>
                 </td>
                 <td className="td text-right">
                   <input className="number-input" type="number" min={0} step="0.01"
-                    value={r.payPerHour}
-                    onChange={e => update(r.id, 'payPerHour', number(e.target.value))}/>
+                         value={r.payPerHour}
+                         onChange={e => update(r.id, 'payPerHour', number(e.target.value))}/>
                 </td>
                 <td className="td text-right">
                   <input className="number-input" type="number" min={0} step="0.1"
-                    value={r.nightsPerWeek}
-                    onChange={e => update(r.id, 'nightsPerWeek', number(e.target.value))}/>
+                         value={r.nightsPerWeek}
+                         onChange={e => update(r.id, 'nightsPerWeek', number(e.target.value))}/>
                 </td>
                 <td className="td text-right">{WEEKS_PER_MONTH.toFixed(3)}</td>
                 <td className="td text-right">{formatCurrency(rowMonthly(r))}</td>
