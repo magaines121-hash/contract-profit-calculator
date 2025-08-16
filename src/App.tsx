@@ -1,7 +1,9 @@
-
 import React, { useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import PayrollTable, { Row, WEEKS_PER_MONTH, sumLabor } from './components.PayrollTable';
 import { formatCurrency } from './utils.currency';
+import { supabase } from './supabaseClient';
+import LoginCard from './LoginCard';
 
 type State = {
   clientName: string;
@@ -33,10 +35,33 @@ const DEFAULT_STATE: State = {
 };
 
 const LS_KEY = 'contract-profit-calculator:v1';
-
 const num = (v: any) => (isNaN(parseFloat(v)) ? 0 : Math.max(0, parseFloat(v)));
 
 export default function App() {
+  // --- Auth session ---
+  const [session, setSession] = useState<Session | null>(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => setSession(sess));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // If not signed in, show login
+  if (!session) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Contract Profit Calculator</h1>
+        </header>
+        <LoginCard />
+        <p className="text-xs text-gray-500 text-center mt-6">
+          Tip: If Supabase requires email confirmation, check your inbox after signing up.
+        </p>
+      </div>
+    );
+  }
+
+  // --- Calculator state (signed-in only) ---
   const [state, setState] = useState<State>(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -50,9 +75,7 @@ export default function App() {
   }, [state]);
 
   const set = (patch: Partial<State>) => setState(s => ({ ...s, ...patch }));
-
   const labor = useMemo(() => sumLabor(state.rows), [state.rows]);
-
   const pctDollar = (pct: number) => (state.contractBilling * pct) / 100;
 
   const royalty = pctDollar(state.royaltyPct);
@@ -73,7 +96,14 @@ export default function App() {
       [],
       ['Payroll'],
       ['#','Hours/Night','Pay/Hour','Nights/Week','Weeks/Month','Monthly Pay'],
-      ...state.rows.map((r,i)=>[i+1, r.hoursPerNight, r.payPerHour, r.nightsPerWeek, WEEKS_PER_MONTH, r.hoursPerNight*r.payPerHour*r.nightsPerWeek*WEEKS_PER_MONTH]),
+      ...state.rows.map((r,i)=>[
+        i+1,
+        r.hoursPerNight,
+        r.payPerHour,
+        r.nightsPerWeek,
+        WEEKS_PER_MONTH,
+        r.hoursPerNight * r.payPerHour * r.nightsPerWeek * WEEKS_PER_MONTH
+      ]),
       [],
       ['Expenses %', 'Percent', 'Amount'],
       ['Royalty', state.royaltyPct, royalty],
@@ -88,7 +118,7 @@ export default function App() {
       ['Profit', '', profit],
     ];
 
-    const csv = rows.map(r => r.map(c => (c===null||c===undefined) ? '' : String(c)).join(',')).join('\n');
+    const csv = rows.map(r => r.map(c => (c == null ? '' : String(c))).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -102,9 +132,10 @@ export default function App() {
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Contract Profit Calculator</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">{session.user.email}</span>
           <button onClick={reset} className="btn btn-ghost">Reset</button>
-          <button onClick={exportCSV} className="btn btn-primary">Export CSV</button>
+          <button onClick={() => supabase.auth.signOut()} className="btn btn-primary">Sign out</button>
         </div>
       </header>
 
