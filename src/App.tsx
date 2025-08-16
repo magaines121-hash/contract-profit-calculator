@@ -46,7 +46,7 @@ const DEFAULT_STATE: State = {
 const LS_KEY = 'contract-profit-calculator:v1';
 
 export default function App() {
-  // --- debug bar state ---
+  // --- debug bar toggle ---
   const [showDebug, setShowDebug] = useState(false);
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
