@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { formatCurrency } from '../utils.currency';
+import { formatCurrency } from './utils.currency';
 
 export const WEEKS_PER_MONTH = 4.333;
 
