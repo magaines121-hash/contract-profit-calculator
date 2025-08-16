@@ -45,14 +45,16 @@ const DEFAULT_STATE: State = {
 
 const LS_KEY = 'contract-profit-calculator:v1';
 
+// -----------------------
+// Top-level App (only auth + debug here)
+// -----------------------
 export default function App() {
-  // --- debug bar toggle ---
+  // Top-level hooks must always run in the same order
   const [showDebug, setShowDebug] = useState(false);
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
   const mask = (k?: string) => (k ? k.slice(0, 8) + '…' + k.slice(-6) : '—');
 
-  // --- auth session ---
   const [session, setSession] = useState<Session | null>(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -60,8 +62,8 @@ export default function App() {
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
-  // Not signed in → show login
   if (!session) {
+    // Signed-out view: NO calculator hooks here
     return (
       <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -81,7 +83,29 @@ export default function App() {
     );
   }
 
-  // --- calculator state (signed-in only) ---
+  // Signed-in view renders a separate component that owns all calculator hooks
+  return <CalculatorScreen session={session} onToggleDebug={() => setShowDebug(s => !s)} showDebug={showDebug} envUrl={envUrl} envKey={envKey} />;
+}
+
+// -----------------------
+// Signed-in calculator in its own component (safe hook order)
+// -----------------------
+function CalculatorScreen({
+  session,
+  onToggleDebug,
+  showDebug,
+  envUrl,
+  envKey,
+}: {
+  session: Session;
+  onToggleDebug: () => void;
+  showDebug: boolean;
+  envUrl?: string;
+  envKey?: string;
+}) {
+  const mask = (k?: string) => (k ? k.slice(0, 8) + '…' + k.slice(-6) : '—');
+
+  // All calculator hooks live here (this component only mounts when signed in)
   const [state, setState] = useState<State>(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -98,7 +122,6 @@ export default function App() {
 
   const set = (patch: Partial<State>) => setState(s => ({ ...s, ...patch }));
 
-  // --- derived values ---
   const labor = useMemo(() => {
     try {
       const v = sumLabor(state.rows);
@@ -182,7 +205,7 @@ export default function App() {
           <button onClick={() => setState(DEFAULT_STATE)} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#fff' }}>
             Reset
           </button>
-          <button onClick={() => setShowDebug(s => !s)} style={{ padding: '6px 10px' }}>Debug</button>
+          <button onClick={onToggleDebug} style={{ padding: '6px 10px' }}>Debug</button>
         </div>
       </header>
 
