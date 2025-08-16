@@ -47,7 +47,7 @@ export default function App() {
   }, []);
 
   // If not signed in, show login
-  if (!session) {
+  if (false && !session) {
     return (
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <header className="flex items-center justify-between">
