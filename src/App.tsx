@@ -73,7 +73,7 @@ export default function App() {
       [],
       ['Payroll'],
       ['#','Hours/Night','Pay/Hour','Nights/Week','Weeks/Month','Monthly Pay'],
-      *state.rows.map((r,i)=>[i+1, r.hoursPerNight, r.payPerHour, r.nightsPerWeek, WEEKS_PER_MONTH, r.hoursPerNight*r.payPerHour*r.nightsPerWeek*WEEKS_PER_MONTH]),
+      ...state.rows.map((r,i)=>[i+1, r.hoursPerNight, r.payPerHour, r.nightsPerWeek, WEEKS_PER_MONTH, r.hoursPerNight*r.payPerHour*r.nightsPerWeek*WEEKS_PER_MONTH]),
       [],
       ['Expenses %', 'Percent', 'Amount'],
       ['Royalty', state.royaltyPct, royalty],
