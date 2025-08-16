@@ -209,13 +209,23 @@ function CalculatorScreen({
 
   // --- Stripe Subscribe button ---
   const [payLoading, setPayLoading] = useState(false);
-  const [notice, setNotice] = useState<string | null>(() => {
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Read ?checkout=... once and clean the URL
+  useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
     const status = qs.get('checkout');
-    if (status === 'success') return 'Payment successful (test mode). Thank you!';
-    if (status === 'cancelled') return 'Checkout cancelled.';
-    return null;
-  });
+    if (status === 'success') setNotice('Payment successful (test mode). Thank you!');
+    if (status === 'cancelled') setNotice('Checkout cancelled.');
+
+    if (status) {
+      qs.delete('checkout');
+      qs.delete('session_id');
+      const newQs = qs.toString();
+      const clean = window.location.pathname + (newQs ? `?${newQs}` : '');
+      window.history.replaceState({}, '', clean);
+    }
+  }, []);
 
   async function startCheckout() {
     try {
