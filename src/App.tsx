@@ -44,17 +44,17 @@ const DEFAULT_STATE: State = {
 };
 
 const LS_KEY = 'contract-profit-calculator:v1';
+const mask = (k?: string) => (k ? k.slice(0, 8) + '…' + k.slice(-6) : '—');
 
 // -----------------------
-// Top-level App (only auth + debug here)
+// Top-level App (auth + debug gating)
 // -----------------------
 export default function App() {
-  // Top-level hooks must always run in the same order
-  const [showDebug, setShowDebug] = useState(false);
+  // ENV (used in debug panel)
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
-  const mask = (k?: string) => (k ? k.slice(0, 8) + '…' + k.slice(-6) : '—');
 
+  // Auth session
   const [session, setSession] = useState<Session | null>(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -62,20 +62,34 @@ export default function App() {
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
+  // Debug UI state
+  const [showDebug, setShowDebug] = useState(false);
+
+  // ✅ Option A: show Debug only for you / local dev / ?debug=1
+  const isDebugAllowed =
+    (import.meta as any).env?.DEV ||
+    new URLSearchParams(window.location.search).has('debug') ||
+    session?.user?.email === 'magaines121@gmail.com';
+
+  // Not signed in → show login
   if (!session) {
-    // Signed-out view: NO calculator hooks here
     return (
       <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 style={{ margin: 0 }}>Contract Profit Calculator</h1>
-          <button onClick={() => setShowDebug(s => !s)} style={{ padding: '6px 10px' }}>Debug</button>
+          {isDebugAllowed && (
+            <button onClick={() => setShowDebug(s => !s)} style={{ padding: '6px 10px' }}>Debug</button>
+          )}
         </header>
-        {showDebug && (
+
+        {isDebugAllowed && showDebug && (
           <div style={{ padding: 12, background: '#F0F7FF', border: '1px solid #CCE0FF', borderRadius: 8, marginBottom: 16, fontSize: 12 }}>
             env.URL: <code>{envUrl || 'missing'}</code> · env.KEY: <code>{mask(envKey)}</code> · session: <code>none</code>
           </div>
         )}
+
         <LoginCard />
+
         <p style={{ fontSize: 12, color: '#666', textAlign: 'center', marginTop: 12 }}>
           If signup requires confirmation, create a user in Supabase → Authentication → Users (Email confirmed = ON), then sign in here.
         </p>
@@ -83,29 +97,38 @@ export default function App() {
     );
   }
 
-  // Signed-in view renders a separate component that owns all calculator hooks
-  return <CalculatorScreen session={session} onToggleDebug={() => setShowDebug(s => !s)} showDebug={showDebug} envUrl={envUrl} envKey={envKey} />;
+  // Signed-in view renders a separate component that owns all calculator hooks (prevents hooks-order errors)
+  return (
+    <CalculatorScreen
+      session={session}
+      isDebugAllowed={isDebugAllowed}
+      showDebug={showDebug}
+      onToggleDebug={() => setShowDebug(s => !s)}
+      envUrl={envUrl}
+      envKey={envKey}
+    />
+  );
 }
 
 // -----------------------
-// Signed-in calculator in its own component (safe hook order)
+// Signed-in calculator (safe hook order)
 // -----------------------
 function CalculatorScreen({
   session,
-  onToggleDebug,
+  isDebugAllowed,
   showDebug,
+  onToggleDebug,
   envUrl,
   envKey,
 }: {
   session: Session;
-  onToggleDebug: () => void;
+  isDebugAllowed: boolean;
   showDebug: boolean;
+  onToggleDebug: () => void;
   envUrl?: string;
   envKey?: string;
 }) {
-  const mask = (k?: string) => (k ? k.slice(0, 8) + '…' + k.slice(-6) : '—');
-
-  // All calculator hooks live here (this component only mounts when signed in)
+  // All calculator hooks live here
   const [state, setState] = useState<State>(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -205,11 +228,13 @@ function CalculatorScreen({
           <button onClick={() => setState(DEFAULT_STATE)} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#fff' }}>
             Reset
           </button>
-          <button onClick={onToggleDebug} style={{ padding: '6px 10px' }}>Debug</button>
+          {isDebugAllowed && (
+            <button onClick={onToggleDebug} style={{ padding: '6px 10px' }}>Debug</button>
+          )}
         </div>
       </header>
 
-      {showDebug && (
+      {isDebugAllowed && showDebug && (
         <div style={{ padding: 12, background: '#F0F7FF', border: '1px solid #CCE0FF', borderRadius: 8, marginBottom: 16, fontSize: 12 }}>
           env.URL: <code>{envUrl || 'missing'}</code> · env.KEY: <code>{mask(envKey)}</code> · session: <code>{session?.user?.email || 'none'}</code>
         </div>
