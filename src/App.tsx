@@ -9,8 +9,10 @@ import { formatCurrency } from './utils/currency';
 // ---- helpers ----
 const newId = () =>
   typeof crypto !== 'undefined' && (crypto as any).randomUUID
-    ? (crypto as any).randomUUID()
-    : `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    ? (crypto as any).randomUUID
+    : null
+  ? (crypto as any).randomUUID()
+  : `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 const toNum = (v: any) => (isNaN(parseFloat(v)) ? 0 : Math.max(0, parseFloat(v)));
 
@@ -207,20 +209,25 @@ function CalculatorScreen({
     }
   };
 
-  // --- Stripe Subscribe button ---
+  // --- Stripe: Subscribe + Portal ---
   const [payLoading, setPayLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Read ?checkout=... once and clean the URL
+  // Read ?checkout=... and ?portal=... once and clean the URL
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
-    const status = qs.get('checkout');
-    if (status === 'success') setNotice('Payment successful (test mode). Thank you!');
-    if (status === 'cancelled') setNotice('Checkout cancelled.');
+    const checkout = qs.get('checkout');
+    const portal = qs.get('portal');
 
-    if (status) {
+    if (checkout === 'success') setNotice('Payment successful. Thank you!');
+    if (checkout === 'cancelled') setNotice('Checkout cancelled.');
+    if (portal === 'done') setNotice('Billing portal closed.');
+
+    if (checkout || portal) {
       qs.delete('checkout');
       qs.delete('session_id');
+      qs.delete('portal');
       const newQs = qs.toString();
       const clean = window.location.pathname + (newQs ? `?${newQs}` : '');
       window.history.replaceState({}, '', clean);
@@ -244,6 +251,27 @@ function CalculatorScreen({
     }
   }
 
+  async function openBillingPortal() {
+    try {
+      setPortalLoading(true);
+      const res = await fetch('/api/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email }),
+      });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url; // go to Stripe Customer Portal
+      } else {
+        alert(data?.error || 'Failed to open billing portal');
+      }
+    } catch (e: any) {
+      alert('Network error: ' + (e?.message || String(e)));
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   // --- styles ---
   const card: React.CSSProperties = { background: '#fff', borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,.06)', padding: 16 };
   const grid2: React.CSSProperties = { display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' };
@@ -264,6 +292,13 @@ function CalculatorScreen({
             style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#0a2540', color: '#fff' }}
           >
             {payLoading ? 'Opening Checkout…' : 'Subscribe'}
+          </button>
+          <button
+            onClick={openBillingPortal}
+            disabled={portalLoading}
+            style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#fff' }}
+          >
+            {portalLoading ? 'Opening Portal…' : 'Manage billing'}
           </button>
           <button onClick={exportCSV} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#111', color: '#fff' }}>
             Export CSV
