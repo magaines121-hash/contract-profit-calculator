@@ -164,6 +164,7 @@ function CalculatorScreen({
   const totalExpenses = royalty + management + insurance + supplies + labor + laborTaxes + state.specialEquipment;
   const profit = state.contractBilling - totalExpenses;
 
+  // --- Export CSV ---
   const exportCSV = () => {
     try {
       const rows = [
@@ -206,11 +207,39 @@ function CalculatorScreen({
     }
   };
 
+  // --- Stripe Subscribe button ---
+  const [payLoading, setPayLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const status = qs.get('checkout');
+    if (status === 'success') return 'Payment successful (test mode). Thank you!';
+    if (status === 'cancelled') return 'Checkout cancelled.';
+    return null;
+  });
+
+  async function startCheckout() {
+    try {
+      setPayLoading(true);
+      const res = await fetch('/api/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url; // go to Stripe Checkout
+      } else {
+        alert(data?.error || 'Failed to start checkout');
+      }
+    } catch (e: any) {
+      alert('Network error: ' + (e?.message || String(e)));
+    } finally {
+      setPayLoading(false);
+    }
+  }
+
   // --- styles ---
   const card: React.CSSProperties = { background: '#fff', borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,.06)', padding: 16 };
   const grid2: React.CSSProperties = { display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' };
   const label: React.CSSProperties = { fontSize: 12, color: '#555', display: 'block', marginBottom: 6 };
   const input: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 8 };
+  const banner: React.CSSProperties = { padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 14, border: '1px solid #e5e5e5', background: '#FAFAFA' };
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
@@ -219,8 +248,12 @@ function CalculatorScreen({
         <h1 style={{ margin: 0 }}>Contract Profit Calculator</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: '#666' }}>{session?.user?.email ?? 'Account'}</span>
-          <button onClick={() => supabase.auth.signOut()} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#fff' }}>
-            Sign out
+          <button
+            onClick={startCheckout}
+            disabled={payLoading}
+            style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#0a2540', color: '#fff' }}
+          >
+            {payLoading ? 'Opening Checkout…' : 'Subscribe'}
           </button>
           <button onClick={exportCSV} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#111', color: '#fff' }}>
             Export CSV
@@ -231,8 +264,13 @@ function CalculatorScreen({
           {isDebugAllowed && (
             <button onClick={onToggleDebug} style={{ padding: '6px 10px' }}>Debug</button>
           )}
+          <button onClick={() => supabase.auth.signOut()} style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid #ddd', background: '#fff' }}>
+            Sign out
+          </button>
         </div>
       </header>
+
+      {notice && <div style={banner}>{notice}</div>}
 
       {isDebugAllowed && showDebug && (
         <div style={{ padding: 12, background: '#F0F7FF', border: '1px solid #CCE0FF', borderRadius: 8, marginBottom: 16, fontSize: 12 }}>
